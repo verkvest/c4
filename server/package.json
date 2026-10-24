@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Server part of Connect Four game to handle player-to-player communication in browser",
+  "description": "Unused legacy match server. The mobile app does not connect to it.",
   "repository": {
     "type": "git",
     "url": "https://github.com/kenrick95/c4.git"
@@ -20,7 +20,7 @@
   "license": "MIT",
   "keywords": [
     "c4",
-    "connect-four",
+    "four-in-a-line",
     "game"
   ],
   "files": [

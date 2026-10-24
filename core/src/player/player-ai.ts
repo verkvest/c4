@@ -12,8 +12,14 @@ export class PlayerAi extends Player {
   static readonly MAX_DEPTH = 4
   private ownBoardPieceValue: number
   private enemyBoardPiece: BoardPiece
-  constructor(boardPiece: BoardPiece, label: string) {
+  private maxDepth: number
+  constructor(
+    boardPiece: BoardPiece,
+    label: string,
+    maxDepth: number = PlayerAi.MAX_DEPTH,
+  ) {
     super(boardPiece, label)
+    this.maxDepth = Math.max(1, Math.min(7, Math.round(maxDepth)))
     this.ownBoardPieceValue = this.getBoardPieceValue(boardPiece)
     this.enemyBoardPiece =
       boardPiece === BoardPiece.PLAYER_1
@@ -123,7 +129,7 @@ export class PlayerAi extends Player {
     const isWon = stateValue.winnerBoardPiece === this.boardPiece
     const isLost = stateValue.winnerBoardPiece === this.enemyBoardPiece
 
-    if (depth >= PlayerAi.MAX_DEPTH || isWon || isLost) {
+    if (depth >= this.maxDepth || isWon || isLost) {
       return {
         value:
           this.transformValues(
@@ -228,6 +234,7 @@ export class PlayerAi extends Player {
   }
 
   async getAction(board: BoardBase): Promise<number> {
+    await new Promise((resolve) => setTimeout(resolve, 0))
     const state = clone(board.map)
     const action = this.maxState(
       state,

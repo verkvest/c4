@@ -10,10 +10,10 @@ export enum BoardPiece {
 export class BoardBase {
   static readonly ROWS: number = 6
   static readonly COLUMNS: number = 7
-  static readonly PLAYER_1_COLOR: string = '#ef453b'
-  static readonly PLAYER_2_COLOR: string = '#0059ff'
-  static readonly PIECE_STROKE_STYLE: string = 'black'
-  static readonly MASK_COLOR: string = '#d8d8d8'
+  static PLAYER_1_COLOR = '#ef453b'
+  static PLAYER_2_COLOR = '#0059ff'
+  static PIECE_STROKE_STYLE = 'black'
+  static MASK_COLOR = '#d8d8d8'
   static CANVAS_HEIGHT: number
   static CANVAS_WIDTH: number
   static PIECE_RADIUS: number
@@ -22,7 +22,19 @@ export class BoardBase {
   static MESSAGE_WIDTH: number
   static MESSAGE_X_BEGIN: number
   static MESSAGE_Y_BEGIN: number
-  static SCALE: number
+  static SCALE = 1
+
+  static setColors(colors: {
+    player1: string
+    player2: string
+    mask: string
+    stroke: string
+  }) {
+    BoardBase.PLAYER_1_COLOR = colors.player1
+    BoardBase.PLAYER_2_COLOR = colors.player2
+    BoardBase.MASK_COLOR = colors.mask
+    BoardBase.PIECE_STROKE_STYLE = colors.stroke
+  }
 
   map: Array<Array<BoardPiece>>
   protected winnerBoardPiece: BoardPiece

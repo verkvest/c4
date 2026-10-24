@@ -17,11 +17,9 @@ test('keyboard play updates the accessible board and announces the next turn', a
   )
   await expect(liveRegion).toHaveAttribute('role', 'status')
   await expect(liveRegion).toHaveAttribute('aria-live', 'polite')
-  await expect(boardState).toContainText('Connect Four board')
+  await expect(boardState).toContainText('Aureline board')
 
-  await page
-    .getByRole('radio', { name: 'Offline: Human player vs human player' })
-    .check()
+  await page.getByRole('radio', { name: 'Pass and play' }).check()
   await page.getByRole('button', { name: 'Start game' }).click()
 
   await expect(setupDialog).not.toBeVisible()
@@ -51,9 +49,7 @@ test('replay returns keyboard focus to the first column', async ({ page }) => {
   const resultDialog = page.locator('.message-body')
   const playAgainButton = page.getByRole('button', { name: 'Play again' })
 
-  await page
-    .getByRole('radio', { name: 'Offline: Human player vs human player' })
-    .check()
+  await page.getByRole('radio', { name: 'Pass and play' }).check()
   await page.getByRole('button', { name: 'Start game' }).click()
   await expect(setupDialog).not.toBeVisible()
 
@@ -98,9 +94,7 @@ test('renders a winning player name as text instead of markup', async ({
   const liveRegion = page.locator('.section-message')
   const resultDialog = page.locator('.message-body')
 
-  await page
-    .getByRole('radio', { name: 'Offline: Human player vs human player' })
-    .check()
+  await page.getByRole('radio', { name: 'Pass and play' }).check()
   await page.locator('#player-1-name').fill(playerName)
   await page.getByRole('button', { name: 'Start game' }).click()
   await expect(page.locator('.game-control').first()).toBeEnabled()
@@ -142,9 +136,7 @@ test('ignores column shortcuts while a text input or modal dialog is active', as
   const boardState = page.locator('.board-state')
   const messageDialog = page.locator('.message-body')
 
-  await page
-    .getByRole('radio', { name: 'Offline: Human player vs human player' })
-    .check()
+  await page.getByRole('radio', { name: 'Pass and play' }).check()
   await page.getByRole('button', { name: 'Start game' }).click()
   await expect(liveRegion).toHaveText("Player 1's turn.")
 

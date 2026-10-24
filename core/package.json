@@ -1,7 +1,7 @@
 {
   "name": "@kenrick95/c4",
   "version": "5.1.1",
-  "description": "Building blocks for a Connect Four game",
+  "description": "Rules engine for Aureline, a four-in-a-line game",
   "type": "module",
   "repository": {
     "type": "git",
@@ -39,7 +39,7 @@
   "license": "MIT",
   "keywords": [
     "c4",
-    "connect-four",
+    "four-in-a-line",
     "game"
   ],
   "source": "src/lib.ts",

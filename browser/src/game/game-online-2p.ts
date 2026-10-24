@@ -31,12 +31,11 @@ const shareButton = document.querySelector(
   '.statusbox-button-share',
 ) as HTMLDivElement
 
-const C4_SERVER_ENDPOINT =
-  import.meta.env.MODE === 'production'
-    ? import.meta.env.C4_SERVER_ENDPOINT
-      ? import.meta.env.C4_SERVER_ENDPOINT
-      : `wss://c4-server.fly.dev/`
-    : `ws://${location.hostname}:8080`
+function onlinePlayEnabled(): boolean {
+  return false
+}
+
+const C4_SERVER_ENDPOINT = ''
 
 export class GameOnline2p extends GameBase {
   controls?: ReturnType<typeof activateGameControls>
@@ -92,6 +91,24 @@ export class GameOnline2p extends GameBase {
   }
 
   initConnection() {
+    if (!onlinePlayEnabled()) {
+      this.isGameEnded = true
+      this.isMoveAllowed = false
+      if (statusboxBodyConnection) {
+        statusboxBodyConnection.textContent = 'Online play is off'
+      }
+      announce(
+        'Online matches are turned off. Choose a rival or pass the phone.',
+      )
+      showMessage({
+        title: 'Offline only',
+        messages: [
+          'Online matches are turned off in this build.',
+          'Play a rival or pass the phone instead.',
+        ],
+      })
+      return
+    }
     console.log('initConnection')
     this.connectionPlayerId = null
     this.connectionMatchId = null
@@ -445,6 +462,7 @@ export function initGameOnline2p(playerName: string) {
     console.error('Canvas DOM is null')
     return
   }
+  const boardCanvas: HTMLCanvasElement = canvas
 
   const searchParams = new URLSearchParams(location.search)
   const connectionMatchId = searchParams.get('matchId')
@@ -486,7 +504,7 @@ export function initGameOnline2p(playerName: string) {
   }
 
   function handleCanvasClick(event: MouseEvent) {
-    const rect = canvas.getBoundingClientRect()
+    const rect = boardCanvas.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
     controls.playColumn(getColumnFromCoord({ x: x, y: y }))

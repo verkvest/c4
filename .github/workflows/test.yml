@@ -2,9 +2,8 @@ name: Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, "cursor/**" ]
   pull_request:
-    branches: [ master ]
 
 permissions:
   contents: read
@@ -47,6 +46,14 @@ jobs:
           path: browser/test-results
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload phone screenshots
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phone-screenshots
+          path: browser/phone-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Run Builds
         run: yarn workspaces foreach --all --verbose --topological run build
 

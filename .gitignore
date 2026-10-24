@@ -79,6 +79,23 @@ typings/
 # End of https://www.gitignore.io/api/node
 dist/
 
+# Capacitor / native build output
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/DerivedData/
+ios/**/xcuserdata/
+*.xcuserstate
+android/.gradle/
+android/local.properties
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+browser/phone-screenshots/
+browser/test-results/
+browser/playwright-report/
+
 # https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
 .pnp.*
 .yarn/*

@@ -1,0 +1,74 @@
+# Release AAB + APK for Aureline. targetSdk 36.
+# Signs with ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS
+# when those secrets exist. Otherwise uploads a debug-signed APK (and AAB).
+name: android-release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, "cursor/**"]
+  pull_request:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Android SDK 36
+        uses: android-actions/setup-android@v3
+      - name: Install platform 36
+        run: yes | sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Install dependencies and sync web assets
+        run: |
+          yarn install --frozen-lockfile
+          yarn build:mobile
+      - name: Decode release keystore when secrets are present
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_B64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "HAS_KEY=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_KEY=false" >> "$GITHUB_ENV"
+            echo "::notice::Keystore secrets are absent. Building a debug-signed release APK."
+          fi
+      - name: Build release AAB and APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease assembleRelease --stacktrace \
+            -PVERSION_CODE="${{ github.run_number }}" \
+            -PVERSION_NAME="0.1.0"
+      - name: Confirm targetSdk 36
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          AAPT=$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -path '*36*/aapt' | sort -V | tail -1)
+          if [ -z "$AAPT" ]; then
+            AAPT=$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -1)
+          fi
+          "$AAPT" dump badging "$APK" | tee "$RUNNER_TEMP/badging.txt"
+          grep -q "targetSdkVersion:'36'" "$RUNNER_TEMP/badging.txt"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-release
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error

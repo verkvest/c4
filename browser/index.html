@@ -1,220 +1,271 @@
 ﻿<!doctype html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" data-theme="harbor">
   <head>
     <meta charset="utf-8" />
-    <title>c4 - Connect Four</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aureline</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <meta
       name="description"
-      content="Connect Four game in JS + Canvas. Play against artificial intelligence or with other human offline or online!"
+      content="Aureline is a four-in-a-line board game. Play a rival, pass the phone, and change the table colors. Fully offline."
     />
-    <link rel="canonical" href="https://kenrick95.github.io/c4/" />
-    <meta property="og:url" content="https://kenrick95.github.io/c4/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="c4 - Connect Four" />
-    <meta
-      property="og:description"
-      content="Connect Four game in JS + Canvas. Play against artificial intelligence or with other human offline or online!"
-    />
+    <meta name="theme-color" content="#071421" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Aureline" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
   </head>
 
   <body>
-    <header class="header">
-      <h1 class="header-title">
-        <img
-          src="/logo.svg"
-          alt="c4 - Connect Four logo"
-          width="24"
-          height="24"
-        />
-        c4 - Connect Four
-      </h1>
-    </header>
-    <section class="section">
-      <div
-        class="section-message"
-        role="status"
-        aria-label="Game updates"
-        aria-live="polite"
-        aria-atomic="true"
-      ></div>
-      <canvas class="section-canvas" aria-hidden="true"></canvas>
-      <p
-        class="visually-hidden board-player-legend"
-        id="board-player-legend"
-      ></p>
-      <table
-        class="visually-hidden board-state"
-        aria-describedby="board-player-legend"
-      >
-        <caption>
-          Connect Four board. Rows are listed from top to bottom.
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Row</th>
-            <th scope="col">Column 1</th>
-            <th scope="col">Column 2</th>
-            <th scope="col">Column 3</th>
-            <th scope="col">Column 4</th>
-            <th scope="col">Column 5</th>
-            <th scope="col">Column 6</th>
-            <th scope="col">Column 7</th>
-          </tr>
-        </thead>
-        <tbody class="board-state-body"></tbody>
-      </table>
-      <fieldset class="hidden game-controls" tabindex="-1">
-        <legend class="visually-hidden">
-          Connect Four columns. Use keys 1 through 7 to drop a disc in a
-          column when it is your turn.
-        </legend>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="0"
-          aria-keyshortcuts="1"
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-mark" src="/logo.svg" alt="" width="40" height="40" />
+          <div>
+            <p class="brand-kicker">Line up four</p>
+            <h1 class="brand-name">Aureline</h1>
+          </div>
+        </div>
+        <button class="text-button" type="button" id="open-menu">Menu</button>
+      </header>
+
+      <main class="play-stage">
+        <p
+          class="section-message"
+          role="status"
+          aria-label="Game updates"
+          aria-live="polite"
+          aria-atomic="true"
+        ></p>
+        <div class="board-slot">
+          <div class="board-frame">
+            <canvas class="section-canvas" aria-hidden="true"></canvas>
+            <p class="move-hint hidden">Tap a column, or press 1–7.</p>
+            <fieldset class="hidden game-controls" tabindex="-1">
+              <legend class="visually-hidden">
+                Columns. Use keys 1 through 7 to drop a disc in a column when
+                it is your turn.
+              </legend>
+              <button
+                class="game-control"
+                type="button"
+                data-column="0"
+                aria-keyshortcuts="1"
+              >
+                1
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="1"
+                aria-keyshortcuts="2"
+              >
+                2
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="2"
+                aria-keyshortcuts="3"
+              >
+                3
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="3"
+                aria-keyshortcuts="4"
+              >
+                4
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="4"
+                aria-keyshortcuts="5"
+              >
+                5
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="5"
+                aria-keyshortcuts="6"
+              >
+                6
+              </button>
+              <button
+                class="game-control"
+                type="button"
+                data-column="6"
+                aria-keyshortcuts="7"
+              >
+                7
+              </button>
+            </fieldset>
+          </div>
+        </div>
+        <p class="visually-hidden board-player-legend" id="board-player-legend"></p>
+        <table
+          class="visually-hidden board-state"
+          aria-describedby="board-player-legend"
         >
-          Drop a disc in column 1
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="1"
-          aria-keyshortcuts="2"
-        >
-          Drop a disc in column 2
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="2"
-          aria-keyshortcuts="3"
-        >
-          Drop a disc in column 3
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="3"
-          aria-keyshortcuts="4"
-        >
-          Drop a disc in column 4
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="4"
-          aria-keyshortcuts="5"
-        >
-          Drop a disc in column 5
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="5"
-          aria-keyshortcuts="6"
-        >
-          Drop a disc in column 6
-        </button>
-        <button
-          class="visually-hidden game-control"
-          type="button"
-          data-column="6"
-          aria-keyshortcuts="7"
-        >
-          Drop a disc in column 7
-        </button>
-      </fieldset>
-    </section>
+          <caption>
+            Aureline board. Rows are listed from top to bottom.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Row</th>
+              <th scope="col">Column 1</th>
+              <th scope="col">Column 2</th>
+              <th scope="col">Column 3</th>
+              <th scope="col">Column 4</th>
+              <th scope="col">Column 5</th>
+              <th scope="col">Column 6</th>
+              <th scope="col">Column 7</th>
+            </tr>
+          </thead>
+          <tbody class="board-state-body"></tbody>
+        </table>
+
+        <div class="statusbox hidden">
+          <div class="statusbox-body">
+            <div class="statusbox-body-player">...</div>
+            <div class="statusbox-body-game">...</div>
+            <div class="statusbox-body-connection">...</div>
+          </div>
+          <div class="statusbox-controls">
+            <button
+              class="hidden statusbox-button statusbox-button-back"
+              type="button"
+            >
+              Menu
+            </button>
+            <button
+              class="hidden statusbox-button statusbox-button-play-again"
+              type="button"
+            >
+              Play again
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
 
     <dialog class="init-screen" aria-labelledby="init-screen-title">
-      <h1 id="init-screen-title">
-        <img
-          src="/logo.svg"
-          alt="c4 - Connect Four logo"
-          width="24"
-          height="24"
-        />
-        c4 - Connect Four
-      </h1>
-      <h2>How to play?</h2>
-      <p>Connect Four is a two-player game.</p>
-      <p>
-        Taking turn, each player drops a coloured piece to one of the 7-columns
-        of the board. The piece will then travel down to the next empty row in
-        that column.
+      <div class="menu-hero">
+        <img src="/logo.svg" alt="" width="56" height="56" />
+        <div>
+          <p class="brand-kicker">Offline board</p>
+          <h2 id="init-screen-title" class="menu-title">Aureline</h2>
+        </div>
+      </div>
+      <p class="lede">
+        Drop a disc down a column. The first player to line up four — across,
+        down, or diagonal — takes the board. A full board with no line is a
+        draw.
       </p>
-      <p>
-        The first player to form a connection of four pieces horizontally,
-        vertically, or diagonally wins the game. If the board is completely
-        filled but no one has won, the game is a draw.
-      </p>
-      <p>
-        For a more detailed explanation, you can refer to
-        <a
-          href="https://en.wikipedia.org/wiki/Connect_Four"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Connect Four article on Wikipedia</a
-        >.
-      </p>
-      <h2>Game Settings</h2>
       <form method="dialog" class="game-settings-form">
         <fieldset class="game-settings-form-section">
-          <legend>Playing mode</legend>
+          <legend>Match</legend>
           <ul class="game-settings-mode-list">
             <li>
-              <label
-                ><input
+              <label class="choice">
+                <input
                   class="game-settings-mode-input"
                   type="radio"
                   name="mode"
                   value="offline-ai"
+                  aria-label="Play a rival"
                   checked
                   autofocus
                 />
-                Offline: Human player vs AI player</label
-              >
+                <span class="choice-copy">
+                  <span class="choice-title">Play a rival</span>
+                  <span class="choice-note">You versus the on-device search.</span>
+                </span>
+              </label>
             </li>
             <li>
-              <label
-                ><input
+              <label class="choice">
+                <input
                   class="game-settings-mode-input"
                   type="radio"
                   name="mode"
                   value="offline-human"
+                  aria-label="Pass and play"
                 />
-                Offline: Human player vs human player</label
-              >
+                <span class="choice-copy">
+                  <span class="choice-title">Pass and play</span>
+                  <span class="choice-note">Two people, one phone.</span>
+                </span>
+              </label>
             </li>
             <li>
-              <label
-                ><input
+              <label class="choice">
+                <input
                   class="game-settings-mode-input"
                   type="radio"
                   name="mode"
                   value="ai-vs-ai"
+                  aria-label="Watch a match"
                 />
-                Spectator: AI player vs AI player</label
-              >
-            </li>
-            <li>
-              <label
-                ><input
-                  class="game-settings-mode-input"
-                  type="radio"
-                  name="mode"
-                  value="online-human"
-                />
-                Online: Human player vs human player</label
-              >
+                <span class="choice-copy">
+                  <span class="choice-title">Watch a match</span>
+                  <span class="choice-note">Two rivals play each other.</span>
+                </span>
+              </label>
             </li>
           </ul>
         </fieldset>
+
+        <fieldset class="game-settings-form-section difficulty-fieldset">
+          <legend>Rival strength</legend>
+          <div class="segmented">
+            <label>
+              <input type="radio" name="difficulty" value="casual" />
+              Casual
+            </label>
+            <label>
+              <input type="radio" name="difficulty" value="balanced" checked />
+              Balanced
+            </label>
+            <label>
+              <input type="radio" name="difficulty" value="sharp" />
+              Sharp
+            </label>
+          </div>
+          <p class="choice-note difficulty-note">
+            Casual looks a move ahead. Balanced is the regular search. Sharp
+            looks further and may pause.
+          </p>
+        </fieldset>
+
+        <fieldset class="game-settings-form-section">
+          <legend>Table</legend>
+          <div class="theme-row">
+            <button class="theme-swatch" type="button" data-theme-choice="harbor">
+              <span class="swatch-pair" aria-hidden="true"></span>
+              Harbor
+            </button>
+            <button class="theme-swatch" type="button" data-theme-choice="grove">
+              <span class="swatch-pair" aria-hidden="true"></span>
+              Grove
+            </button>
+            <button class="theme-swatch" type="button" data-theme-choice="midnight">
+              <span class="swatch-pair" aria-hidden="true"></span>
+              Midnight
+            </button>
+          </div>
+        </fieldset>
+
         <label class="game-settings-player-1-name-label" for="player-1-name">
-          Player's name:
+          Your name
         </label>
         <input
           type="text"
@@ -222,10 +273,11 @@
           id="player-1-name"
           value="Player 1"
           name="player-1-name"
+          autocomplete="nickname"
           placeholder="Player 1"
         />
         <label class="game-settings-player-2-name-label" for="player-2-name">
-          Player's name:
+          Second player
         </label>
         <input
           type="text"
@@ -233,40 +285,80 @@
           id="player-2-name"
           value="Player 2"
           name="player-2-name"
+          autocomplete="off"
           placeholder="Player 2"
         />
+
+        <label class="sound-toggle">
+          <input id="sound-toggle" type="checkbox" checked />
+          Sound and vibration
+        </label>
+
         <button class="game-settings-submit" type="submit" value="confirm">
           Start game
         </button>
       </form>
+
+      <section class="stats" aria-label="On this device">
+        <h2>On this device</h2>
+        <p class="stat-rival">Rival: 0 wins, 0 losses, 0 draws</p>
+        <p class="stat-pass">Pass and play: 0 matches</p>
+        <p class="stat-watch">Watched: 0 matches</p>
+      </section>
+
+      <div class="menu-links">
+        <button class="text-button" type="button" id="open-credits">
+          Credits and licenses
+        </button>
+      </div>
     </dialog>
-    <div class="statusbox hidden">
-      <div class="statusbox-body">
-        <div class="statusbox-body-connection">...</div>
-        <div class="statusbox-body-game">...</div>
-        <div class="statusbox-body-player">...</div>
-      </div>
-      <div class="statusbox-controls">
-        <button
-          class="hidden statusbox-button statusbox-button-share"
-          type="button"
-        >
-          Share game
-        </button>
-        <button
-          class="hidden statusbox-button statusbox-button-back"
-          type="button"
-        >
-          End game
-        </button>
-        <button
-          class="hidden statusbox-button statusbox-button-play-again"
-          type="button"
-        >
-          Play again
-        </button>
-      </div>
-    </div>
+
+    <dialog class="credits-screen" aria-labelledby="credits-title">
+      <form method="dialog" class="credits-form">
+        <h2 id="credits-title">Credits and licenses</h2>
+        <p>
+          Aureline is an offline four-in-a-line game. Matches stay on this
+          device. There is no account, no ads, and no online match server.
+        </p>
+        <h3>Game</h3>
+        <p>
+          The rules engine and minimax search are adapted from
+          <strong>c4</strong> by Kenrick (kenrick95), MIT License. The mobile
+          shell, themes, difficulty levels, and original icon are added for
+          this release. No bundled font, music, or third-party artwork ships
+          with the app. Tones are synthesized on device.
+        </p>
+        <h3>c4</h3>
+        <pre class="license-text">The MIT License (MIT)
+
+Copyright (c) Kenrick
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        <h3>Capacitor</h3>
+        <p>
+          The iOS and Android shell uses Capacitor by Ionic / Drifty Co., MIT
+          License. The full notice is in THIRD_PARTY_LICENSES at the project
+          root.
+        </p>
+        <button class="game-settings-submit" type="submit">Close</button>
+      </form>
+    </dialog>
 
     <dialog class="message-body" aria-labelledby="message-title">
       <form method="dialog" class="message-form">
@@ -276,11 +368,6 @@
         </button>
       </form>
     </dialog>
-    <footer class="footer">
-      By <a href="http://kenrick95.org" rel="noopener">Kenrick95</a>. Source
-      code available on
-      <a href="https://github.com/kenrick95/c4" rel="noopener">GitHub</a>.
-    </footer>
     <script type="module" src="./src/app.ts"></script>
   </body>
 </html>

@@ -1,7 +1,7 @@
 {
   "name": "@kenrick95/c4-root",
   "version": "0.0.0",
-  "description": "Connect Four game",
+  "description": "Aureline, an offline four-in-a-line game",
   "private": true,
   "workspaces": [
     "core",
@@ -29,7 +29,7 @@
   "license": "MIT",
   "keywords": [
     "c4",
-    "connect-four",
+    "four-in-a-line",
     "game"
   ],
   "files": [
@@ -42,10 +42,24 @@
     "dev-server": "yarn workspace @kenrick95/c4-server dev",
     "lint": "biome check .",
     "lint:ci": "biome ci .",
-    "lint:fix": "biome check --write ."
+    "lint:fix": "biome check --write .",
+    "build:web": "yarn workspace @kenrick95/c4-browser build",
+    "build:mobile": "yarn build:web && cap sync",
+    "screenshots": "yarn workspace @kenrick95/c4-browser exec playwright test tests/phone-screenshots.spec.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
     "concurrently": "9.2.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4"
   }
 }
