@@ -1,0 +1,186 @@
+# Archive the Capacitor iOS app and upload it to TestFlight.
+# Manual (workflow_dispatch), tags testflight-*, or pushes to master / cursor branches.
+# Skips cleanly (green) when the App Store Connect API key secrets are absent.
+#
+# Required repo secrets (never commit them):
+#   APPSTORE_API_KEY_P8      – contents of AuthKey_<KEYID>.p8, raw PEM or base64
+#   APPSTORE_API_KEY_ID
+#   APPSTORE_API_ISSUER_ID
+# The key needs Admin or App Manager so Xcode can create the distribution
+# certificate and provisioning profile (cloud signing).
+# The App Store Connect *app record* cannot be created via the API. If upload
+# fails only because that record does not exist yet, the log says so.
+name: ios-testflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: Bundle identifier
+        default: es.verkvest.aureline
+      version:
+        description: Marketing version
+        default: 0.1.0
+  push:
+    branches: [master, "cursor/**"]
+    tags: ["testflight-*"]
+
+env:
+  TEAM_ID: 38PT254HDZ
+  BUNDLE_ID: ${{ inputs.bundle_id || 'es.verkvest.aureline' }}
+  APP_VERSION: ${{ inputs.version || '0.1.0' }}
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      HAS_KEY: ${{ secrets.APPSTORE_API_KEY_P8 != '' && secrets.APPSTORE_API_KEY_ID != '' && secrets.APPSTORE_API_ISSUER_ID != '' }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::notice::App Store Connect API key secrets are not set – skipping signing and upload."
+          fi
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: env.HAS_KEY == 'true'
+      - name: Tools + Xcode 26 (App Store requires the iOS 26 SDK)
+        if: env.HAS_KEY == 'true'
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          [ -n "$X" ] && sudo xcode-select -s "$X"
+          xcodebuild -version
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: 24
+      - name: Install dependencies and sync the web app into the Xcode project
+        if: env.HAS_KEY == 'true'
+        run: |
+          yarn install --frozen-lockfile
+          yarn build:mobile
+          if [ -f ios/App/Podfile ]; then
+            cd ios/App
+            pod install
+          fi
+      - name: Install API key
+        if: env.HAS_KEY == 'true'
+        env:
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEYFILE=~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+          if printf '%s' "$APPSTORE_API_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$APPSTORE_API_KEY_P8" > "$KEYFILE"
+          else
+            printf '%s' "$APPSTORE_API_KEY_P8" | base64 --decode > "$KEYFILE"
+          fi
+          chmod 600 "$KEYFILE"
+          echo "KEYFILE=$KEYFILE" >> "$GITHUB_ENV"
+      - name: Register the bundle id if App Store Connect does not have it yet
+        if: env.HAS_KEY == 'true'
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: node scripts/register-bundle-id.mjs
+      - name: Export compliance and version
+        if: env.HAS_KEY == 'true'
+        run: |
+          PLIST=ios/App/App/Info.plist
+          if /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST" >/dev/null 2>&1; then
+            /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+          else
+            /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          fi
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Aureline" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Aureline" "$PLIST"
+      - name: Archive (unsigned; signing happens at export with the API key)
+        if: env.HAS_KEY == 'true'
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          if [ -d ios/App/App.xcworkspace ]; then
+            PROJECT=(-workspace ios/App/App.xcworkspace)
+          else
+            PROJECT=(-project ios/App/App.xcodeproj)
+          fi
+          set -o pipefail
+          xcodebuild "${PROJECT[@]}" -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Aureline.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEYFILE" \
+            -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive | tee "$RUNNER_TEMP/archive.log" | tail -80
+          ARCHIVE="$RUNNER_TEMP/Aureline.xcarchive"
+          # A global SKIP_INSTALL=NO also drops plugin .o files beside the app,
+          # and Xcode then writes an archive with no ApplicationProperties.
+          find "$ARCHIVE/Products/Applications" -mindepth 1 -maxdepth 1 ! -name '*.app' -exec rm -rf {} +
+          APP=$(find "$ARCHIVE/Products/Applications" -maxdepth 1 -name '*.app' | head -1)
+          [ -n "$APP" ]
+          PLIST="$ARCHIVE/Info.plist"
+          if ! /usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleIdentifier' "$PLIST" >/dev/null 2>&1; then
+            BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+            SHORT=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
+            BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist")
+            /usr/libexec/PlistBuddy -c 'Add :ApplicationProperties dict' "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:ApplicationPath string Applications/$(basename "$APP")" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleIdentifier string $BID" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleShortVersionString string $SHORT" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string $BUILD" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:Team string $TEAM_ID" "$PLIST"
+          fi
+          find "$ARCHIVE" -maxdepth 3 | head -30
+          /usr/libexec/PlistBuddy -c Print "$PLIST"
+      - name: Export with App Store distribution signing (cloud-managed via API key) + upload to TestFlight
+        if: env.HAS_KEY == 'true'
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Aureline.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates -authenticationKeyPath "$KEYFILE" \
+            -authenticationKeyID "$APPSTORE_API_KEY_ID" -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID"
+          ls -la "$RUNNER_TEMP/export"
+          xcrun altool --upload-app -t ios -f "$RUNNER_TEMP"/export/*.ipa \
+            --apiKey "$APPSTORE_API_KEY_ID" --apiIssuer "$APPSTORE_API_ISSUER_ID" 2>&1 | tee "$RUNNER_TEMP/upload.log"
+          if grep -q "ERROR" "$RUNNER_TEMP/upload.log"; then
+            if grep -Eq "No suitable application records were found|Cannot determine the Apple ID|does not exist|record was not found" "$RUNNER_TEMP/upload.log"; then
+              echo "::error::No App Store Connect app record for $BUNDLE_ID yet. Create it in App Store Connect → Apps → + (the bundle id is already registered) and re-run this workflow."
+            fi
+            exit 1
+          fi
+          echo "::notice::Uploaded $BUNDLE_ID $APP_VERSION (${{ github.run_number }}) to App Store Connect"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && env.HAS_KEY == 'true'
+        with:
+          name: testflight-logs
+          path: |
+            ${{ runner.temp }}/archive.log
+            ${{ runner.temp }}/upload.log
+          if-no-files-found: ignore
+      - name: Cleanup key
+        if: always()
+        run: rm -rf ~/.appstoreconnect/private_keys

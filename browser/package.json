@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Connect Four game in browser",
+  "description": "Aureline mobile and browser shell",
   "repository": {
     "type": "git",
     "url": "https://github.com/kenrick95/c4.git"
@@ -20,7 +20,7 @@
   "license": "MIT",
   "keywords": [
     "c4",
-    "connect-four",
+    "four-in-a-line",
     "game"
   ],
   "main": "./dist/index.html",
@@ -35,6 +35,11 @@
     "test": "playwright test"
   },
   "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
     "@kenrick95/c4": "workspace:^"
   },
   "devDependencies": {

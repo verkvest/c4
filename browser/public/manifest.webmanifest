@@ -1,0 +1,17 @@
+{
+  "name": "Aureline",
+  "short_name": "Aureline",
+  "description": "Drop discs, line up four, and outplay a rival on your phone.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#071421",
+  "theme_color": "#071421",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

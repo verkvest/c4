@@ -1,37 +1,85 @@
 import { BoardBase, BoardPiece, type Player } from '@kenrick95/c4'
+import { onThemeChange } from '../shell/theme'
 import { animationFrame } from '../utils/animate-frame'
 import { clearCanvas, drawCircle, drawMask, onresize } from './utils'
+
+let activeBoard: Board | undefined
+
+export function relayoutActiveBoard() {
+  activeBoard?.relayout()
+}
 
 export class Board extends BoardBase {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
+  hoverColumn: number | null = null
+  private hoverFill = BoardBase.PLAYER_1_COLOR
   private animationId: number = 0
   private removeResizeListener: (() => void) | undefined
+  private removeThemeListener: (() => void) | undefined
 
   constructor(canvas: HTMLCanvasElement) {
+    Board.measure(canvas)
     super()
     this.canvas = canvas
-    this.context = <CanvasRenderingContext2D>canvas.getContext('2d')
-    this.getBoardScale()
+    this.context = canvas.getContext('2d') as CanvasRenderingContext2D
     this.initConstants()
     this.reset()
     this.onresize()
+    this.removeThemeListener = onThemeChange(() => {
+      this.hoverFill = BoardBase.PLAYER_1_COLOR
+      this.render()
+    })
+    activeBoard = this
+  }
+
+  static measure(canvas: HTMLCanvasElement) {
+    const slot = canvas.closest('.board-slot')
+    const width = slot?.clientWidth || window.innerWidth
+    const height =
+      slot && slot.clientHeight > 160
+        ? slot.clientHeight
+        : Math.max(240, window.innerHeight * 0.58)
+    const scale = Math.min((width - 16) / 640, (height - 16) / 480)
+    BoardBase.SCALE = Math.max(0.46, Math.min(scale, 1.45))
+    return BoardBase.SCALE
   }
 
   getBoardScale() {
-    if (window.innerWidth < 640) {
-      BoardBase.SCALE = 0.5
-    } else {
-      BoardBase.SCALE = 1.0
+    return Board.measure(this.canvas)
+  }
+
+  relayout() {
+    const previous = BoardBase.SCALE
+    this.getBoardScale()
+    if (Math.abs(previous - BoardBase.SCALE) > 0.01) {
+      this.initConstants()
+      clearCanvas(this)
+      this.render()
     }
-    return BoardBase.SCALE
+  }
+
+  setHoverColumn(column: number | null, fillStyle: string) {
+    const next =
+      column !== null &&
+      column >= 0 &&
+      column < BoardBase.COLUMNS &&
+      this.map[0][column] === BoardPiece.EMPTY
+        ? column
+        : null
+    this.hoverFill = fillStyle || BoardBase.PLAYER_1_COLOR
+    if (next === this.hoverColumn) {
+      return
+    }
+    this.hoverColumn = next
+    this.render()
   }
 
   onresize() {
     let prevBoardScale = BoardBase.SCALE
     this.removeResizeListener = onresize(() => {
       this.getBoardScale()
-      if (prevBoardScale !== BoardBase.SCALE) {
+      if (Math.abs(prevBoardScale - BoardBase.SCALE) > 0.01) {
         prevBoardScale = BoardBase.SCALE
         this.initConstants()
         clearCanvas(this)
@@ -69,6 +117,11 @@ export class Board extends BoardBase {
     this.animationId++
     this.removeResizeListener?.()
     this.removeResizeListener = undefined
+    this.removeThemeListener?.()
+    this.removeThemeListener = undefined
+    if (activeBoard === this) {
+      activeBoard = undefined
+    }
   }
 
   private async animateAction(
@@ -79,6 +132,12 @@ export class Board extends BoardBase {
   ): Promise<boolean> {
     const fillStyle = this.getPlayerColor(boardPiece)
     let currentY = 0
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (reduceMotion) {
+      currentY = newRow * 3 * BoardBase.PIECE_RADIUS
+    }
     const doAnimation = () => {
       if (animationId !== this.animationId) {
         return false
@@ -128,6 +187,24 @@ export class Board extends BoardBase {
           strokeStyle: BoardBase.PIECE_STROKE_STYLE,
         })
       }
+    }
+    if (
+      this.hoverColumn !== null &&
+      this.map[0][this.hoverColumn] === BoardPiece.EMPTY
+    ) {
+      this.context.save()
+      this.context.globalAlpha = 0.5
+      drawCircle(this.context, {
+        x:
+          3 * BoardBase.PIECE_RADIUS * this.hoverColumn +
+          BoardBase.MASK_X_BEGIN +
+          2 * BoardBase.PIECE_RADIUS,
+        y: BoardBase.MASK_Y_BEGIN + 2 * BoardBase.PIECE_RADIUS,
+        r: BoardBase.PIECE_RADIUS,
+        fillStyle: this.hoverFill,
+        strokeStyle: BoardBase.PIECE_STROKE_STYLE,
+      })
+      this.context.restore()
     }
   }
 

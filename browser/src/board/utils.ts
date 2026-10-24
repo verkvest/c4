@@ -53,11 +53,34 @@ export function drawCircle(
   { x = 0, y = 0, r = 0, fillStyle = '', strokeStyle = '' },
 ) {
   context.save()
-  context.fillStyle = fillStyle
-  context.strokeStyle = strokeStyle
   context.beginPath()
   context.arc(x, y, r, 0, 2 * Math.PI, false)
+  if (fillStyle && fillStyle !== 'transparent') {
+    const highlight = context.createRadialGradient(
+      x - r * 0.32,
+      y - r * 0.38,
+      r * 0.08,
+      x,
+      y,
+      r,
+    )
+    highlight.addColorStop(0, 'rgba(255,255,255,0.72)')
+    highlight.addColorStop(0.42, fillStyle)
+    highlight.addColorStop(1, fillStyle)
+    context.fillStyle = highlight
+    context.shadowColor = 'rgba(0, 0, 0, 0.28)'
+    context.shadowBlur = r * 0.2
+    context.shadowOffsetY = Math.max(1, r * 0.08)
+  } else {
+    context.fillStyle = fillStyle
+  }
   context.fill()
+  if (strokeStyle && fillStyle && fillStyle !== 'transparent') {
+    context.shadowColor = 'transparent'
+    context.lineWidth = Math.max(1, r * 0.08)
+    context.strokeStyle = strokeStyle
+    context.stroke()
+  }
   context.restore()
 }
 /**

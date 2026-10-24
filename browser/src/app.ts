@@ -1,10 +1,21 @@
-import { Board } from './board'
+import { Board, relayoutActiveBoard } from './board'
 import * as Game from './game'
+import { setSoundEnabled, soundEnabled } from './shell/audio'
+import {
+  depthFor,
+  isDifficultyId,
+  labelFor,
+  readDifficulty,
+  rememberDifficulty,
+} from './shell/difficulty'
+import { bootNativeShell, exitNativeApp } from './shell/native'
+import { renderStats } from './shell/stats'
+import { applyTheme, isThemeId, readThemeId, type ThemeId } from './shell/theme'
 import './style.css'
 
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(readThemeId())
   const canvas = document.querySelector('.section-canvas') as HTMLCanvasElement
-
   if (!canvas) {
     console.error('Canvas element not found')
     return
@@ -12,34 +23,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const initScreenDOM = document.querySelector(
     '.init-screen',
   ) as HTMLDialogElement
-  if (!initScreenDOM) {
-    console.error('Mode element not found ')
-    return
-  }
-  let previewBoard: Board | undefined = new Board(canvas)
-  previewBoard.render()
-
-  const searchParams = new URLSearchParams(location.search)
-  const connectionMatchId = searchParams.get('matchId')
-  const backToModeSelector = document.querySelector(
-    '.statusbox-button-back',
-  ) as HTMLDivElement
-  const shareButton = document.querySelector(
-    '.statusbox-button-share',
-  ) as HTMLDivElement
-  const playAgainButton = document.querySelector(
-    '.statusbox-button-play-again',
-  ) as HTMLButtonElement
-
+  const creditsDialog = document.querySelector(
+    '.credits-screen',
+  ) as HTMLDialogElement
   const settingsForm = document.querySelector(
     '.game-settings-form',
   ) as HTMLFormElement
-
-  if (!settingsForm) {
-    console.error('.game-settings-form not found ')
+  if (!initScreenDOM || !settingsForm) {
+    console.error('Menu markup is missing')
     return
   }
 
+  let previewBoard: Board | undefined = new Board(canvas)
+  previewBoard.render()
+  requestAnimationFrame(() => previewBoard?.relayout())
+
+  const backToModeSelector = document.querySelector(
+    '.statusbox-button-back',
+  ) as HTMLButtonElement
+  const playAgainButton = document.querySelector(
+    '.statusbox-button-play-again',
+  ) as HTMLButtonElement
   const player1NameLabel = settingsForm.querySelector(
     '.game-settings-player-1-name-label',
   ) as HTMLLabelElement
@@ -52,6 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const player2NameInput = settingsForm.querySelector(
     '.game-settings-player-2-name-input',
   ) as HTMLInputElement
+  const difficultyField = settingsForm.querySelector(
+    '.difficulty-fieldset',
+  ) as HTMLElement
+  const soundToggle = document.querySelector(
+    '#sound-toggle',
+  ) as HTMLInputElement
+  const menuButton = document.querySelector('#open-menu') as HTMLButtonElement
+  const creditsButton = document.querySelector(
+    '#open-credits',
+  ) as HTMLButtonElement
 
   let currentGameHandler:
     | {
@@ -61,129 +75,183 @@ document.addEventListener('DOMContentLoaded', () => {
     | undefined
     | null = null
 
+  const storedDifficulty = readDifficulty()
+  for (const input of settingsForm.querySelectorAll<HTMLInputElement>(
+    'input[name="difficulty"]',
+  )) {
+    input.checked = input.value === storedDifficulty
+  }
+  soundToggle.checked = soundEnabled()
+  markTheme(readThemeId())
+  renderStats()
+  renderForm(selectedMode())
+
   backToModeSelector?.classList.add('hidden')
-  shareButton?.classList.add('hidden')
   playAgainButton?.classList.add('hidden')
   initScreenDOM.showModal()
 
-  let chosenMode: string = connectionMatchId ? 'online-human' : 'offline-ai'
-  renderForm()
-
-  backToModeSelector?.addEventListener('click', () => {
-    endCurrentGame()
-    backToModeSelector?.classList.add('hidden')
-    shareButton?.classList.add('hidden')
-    playAgainButton?.classList.add('hidden')
-    initScreenDOM.showModal()
+  backToModeSelector?.addEventListener('click', showMenu)
+  menuButton?.addEventListener('click', () => {
+    if (initScreenDOM.open) {
+      return
+    }
+    showMenu()
   })
-
   playAgainButton?.addEventListener('click', () => {
     currentGameHandler?.restart?.()
   })
-
-  initScreenDOM.addEventListener('cancel', (ev) => {
-    ev.preventDefault()
+  creditsButton?.addEventListener('click', () => {
+    creditsDialog?.showModal()
   })
-
-  initScreenDOM.addEventListener('close', (ev) => {
-    const formData = new FormData(settingsForm)
-    const gameMode = formData.get('mode') as string
-    const firstPlayerName = formData.get('player-1-name') as string | null
-    const secondPlayerName = formData.get('player-2-name') as string | null
-    initGame(gameMode, [firstPlayerName, secondPlayerName])
+  soundToggle?.addEventListener('change', () => {
+    setSoundEnabled(soundToggle.checked)
   })
-
-  settingsForm.addEventListener('input', (ev) => {
-    const formData = new FormData(settingsForm)
-    chosenMode = formData.get('mode') as string
-    renderForm()
-  })
-
-  function renderForm() {
-    if (connectionMatchId) {
-      for (const el of settingsForm.querySelectorAll(
-        '.game-settings-mode-input',
-      )) {
-        const checkboxEl = el as HTMLInputElement
-        checkboxEl.readOnly = true
-        if (checkboxEl.value === 'online-human') {
-          checkboxEl.checked = true
-        } else {
-          checkboxEl.checked = false
-        }
+  for (const swatch of settingsForm.querySelectorAll<HTMLButtonElement>(
+    '.theme-swatch',
+  )) {
+    swatch.addEventListener('click', () => {
+      const theme = swatch.dataset.themeChoice
+      if (!isThemeId(theme)) {
+        return
       }
+      applyTheme(theme)
+      markTheme(theme)
+      previewBoard?.render()
+    })
+  }
 
-      player2NameLabel.textContent = `Your name:`
-      player1NameInput.disabled = true
-      player2NameInput.disabled = false
-      player1NameLabel.classList.add('hidden')
-      player1NameInput.classList.add('hidden')
-      player2NameLabel.classList.remove('hidden')
-      player2NameInput.classList.remove('hidden')
-    } else if (chosenMode === 'offline-human') {
-      player1NameLabel.textContent = `First player's name:`
-      player2NameLabel.textContent = `Second player's name:`
-      player1NameLabel.classList.remove('hidden')
-      player1NameInput.classList.remove('hidden')
-      player2NameLabel.classList.remove('hidden')
-      player2NameInput.classList.remove('hidden')
-      player1NameInput.disabled = false
-      player2NameInput.disabled = false
-    } else if (chosenMode === 'offline-ai') {
-      player1NameLabel.textContent = `Player's name:`
-      player2NameLabel.textContent = `Player's name:`
-      player1NameLabel.classList.remove('hidden')
-      player1NameInput.classList.remove('hidden')
-      player2NameLabel.classList.add('hidden')
-      player2NameInput.classList.add('hidden')
-      player1NameInput.disabled = false
-      player2NameInput.disabled = true
-    } else if (chosenMode === 'online-human') {
-      player1NameLabel.textContent = `Your name:`
-      player2NameLabel.textContent = `Other player's name:`
-      player1NameLabel.classList.remove('hidden')
-      player1NameInput.classList.remove('hidden')
-      player2NameLabel.classList.add('hidden')
-      player2NameInput.classList.add('hidden')
-      player1NameInput.disabled = false
-      player2NameInput.disabled = true
-    } else if (chosenMode === 'ai-vs-ai') {
-      player1NameLabel.textContent = `Player's name:`
-      player2NameLabel.textContent = `Player's name:`
-      player1NameLabel.classList.add('hidden')
-      player1NameInput.classList.add('hidden')
-      player2NameLabel.classList.add('hidden')
-      player2NameInput.classList.add('hidden')
-      player1NameInput.disabled = true
-      player2NameInput.disabled = true
+  initScreenDOM.addEventListener('cancel', (event) => {
+    event.preventDefault()
+  })
+  // Start during submit. The dialog close event can run after Playwright has
+  // already sent the first column key, which would drop that move.
+  settingsForm.addEventListener('submit', () => {
+    const formData = new FormData(settingsForm)
+    const gameMode = formData.get('mode')
+    const difficultyValue = formData.get('difficulty')
+    const difficulty =
+      typeof difficultyValue === 'string' && isDifficultyId(difficultyValue)
+        ? difficultyValue
+        : readDifficulty()
+    rememberDifficulty(difficulty)
+    const firstPlayerName = formData.get('player-1-name')
+    const secondPlayerName = formData.get('player-2-name')
+    initGame(
+      typeof gameMode === 'string' ? gameMode : null,
+      [
+        typeof firstPlayerName === 'string' ? firstPlayerName : null,
+        typeof secondPlayerName === 'string' ? secondPlayerName : null,
+      ],
+      difficulty,
+    )
+  })
+  settingsForm.addEventListener('input', () => {
+    renderForm(selectedMode())
+  })
+
+  void bootNativeShell(() => {
+    if (creditsDialog?.open) {
+      creditsDialog.close()
+      return
+    }
+    const message = document.querySelector(
+      '.message-body',
+    ) as HTMLDialogElement | null
+    if (message?.open) {
+      message.close()
+      return
+    }
+    if (!initScreenDOM.open) {
+      showMenu()
+      return
+    }
+    void exitNativeApp()
+  })
+
+  function selectedMode() {
+    return (
+      (
+        settingsForm.querySelector(
+          'input[name="mode"]:checked',
+        ) as HTMLInputElement | null
+      )?.value || 'offline-ai'
+    )
+  }
+
+  function markTheme(theme: ThemeId) {
+    for (const swatch of settingsForm.querySelectorAll<HTMLButtonElement>(
+      '.theme-swatch',
+    )) {
+      const selected = swatch.dataset.themeChoice === theme
+      swatch.classList.toggle('is-selected', selected)
+      swatch.setAttribute('aria-pressed', selected ? 'true' : 'false')
     }
   }
 
-  function initGame(chosenMode: string | null, playerNames: (string | null)[]) {
-    console.log('initGame chosenMode:', chosenMode)
+  function renderForm(mode: string) {
+    const versusRival = mode === 'offline-ai'
+    const passAndPlay = mode === 'offline-human'
+    const watching = mode === 'ai-vs-ai'
+    difficultyField?.classList.toggle('hidden', passAndPlay)
+    player1NameLabel.classList.toggle('hidden', watching)
+    player1NameInput.classList.toggle('hidden', watching)
+    player2NameLabel.classList.toggle('hidden', !passAndPlay)
+    player2NameInput.classList.toggle('hidden', !passAndPlay)
+    player1NameInput.disabled = watching
+    player2NameInput.disabled = !passAndPlay
+    if (versusRival) {
+      player1NameLabel.textContent = 'Your name'
+    } else if (passAndPlay) {
+      player1NameLabel.textContent = "First player's name"
+      player2NameLabel.textContent = "Second player's name"
+    }
+  }
+
+  function showMenu() {
+    endCurrentGame()
+    backToModeSelector?.classList.add('hidden')
+    playAgainButton?.classList.add('hidden')
+    if (!previewBoard) {
+      previewBoard = new Board(canvas)
+    }
+    previewBoard.render()
+    requestAnimationFrame(() => previewBoard?.relayout())
+    renderStats()
+    if (!initScreenDOM.open) {
+      initScreenDOM.showModal()
+    }
+  }
+
+  function initGame(
+    chosenMode: string | null,
+    playerNames: Array<string | null>,
+    difficulty: ReturnType<typeof readDifficulty>,
+  ) {
     endCurrentGame()
     previewBoard?.dispose()
     previewBoard = undefined
     backToModeSelector?.classList.remove('hidden')
     playAgainButton?.classList.add('hidden')
+    document.body.dataset.mode = chosenMode || ''
+    const depth = depthFor(difficulty)
+    const detail = `${labelFor(difficulty)} search`
     if (chosenMode === 'offline-human') {
       currentGameHandler = Game.initGameLocal2p(
         playerNames[0] || 'Player 1',
         playerNames[1] || 'Player 2',
       )
     } else if (chosenMode === 'offline-ai') {
-      currentGameHandler = Game.initGameLocalAi(playerNames[0] || 'Player 1')
-    } else if (chosenMode === 'online-human') {
-      currentGameHandler = Game.initGameOnline2p(
-        connectionMatchId
-          ? playerNames[1] || 'Player 2'
-          : playerNames[0] || 'Player 1',
+      currentGameHandler = Game.initGameLocalAi(
+        playerNames[0] || 'Player 1',
+        depth,
+        detail,
       )
     } else if (chosenMode === 'ai-vs-ai') {
-      currentGameHandler = Game.initGameAiVsAi()
+      currentGameHandler = Game.initGameAiVsAi(depth, `Watching · ${detail}`)
     } else {
       console.error('Invalid game mode received', chosenMode)
     }
+    requestAnimationFrame(() => relayoutActiveBoard())
   }
 
   function endCurrentGame() {

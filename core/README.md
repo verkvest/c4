@@ -1,5 +1,5 @@
 # @kenrick95/c4
 
-This package contains the building blocks for the game **c4** or **Connect Four** ([playable in browser](https://kenrick95.github.io/c4/))
+Rules, board, and minimax player used by Aureline. The original project is [c4 by Kenrick](https://github.com/kenrick95/c4), MIT License.
 
-More info in the repository: https://github.com/kenrick95/c4
+Pass a search depth to `PlayerAi` to make the rival look further ahead. The default depth is unchanged.

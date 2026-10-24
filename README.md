@@ -1,56 +1,49 @@
-# c4
+# Aureline
 
-![Test](https://github.com/kenrick95/c4/workflows/Test/badge.svg) ![Deploy](https://github.com/kenrick95/c4/workflows/Deploy/badge.svg)
+Aureline is an offline four-in-a-line board game for iPhone and Android. Drop a disc in a column, line up four, and play a rival that searches the board on the device. Two people can also pass the same phone, or watch two rivals play.
 
-**c4**, stands for **Connect Four**, is a browser game written in TypeScript and utilizes HTML's `canvas`. Player is playing against an AI that uses Minimax algorithm and alpha-beta pruning. The evaluation function is hard-coded, and hence the AI may not be moving using the most optimal move.
+The rules engine and minimax search come from [c4](https://github.com/kenrick95/c4) by Kenrick, under the MIT license. This app does not open an online match. The legacy `server/` package is unused by the mobile shell.
 
-## Play
+- Bundle id: `es.verkvest.aureline`
+- Display name: Aureline
 
-- [kenrick95.github.io/c4](https://kenrick95.github.io/c4/)
+## Play on the web
 
-## Gameplay
-
-![Screenshot 2024-03-07 202120](https://github.com/kenrick95/c4/assets/3090380/6cc9e901-83d8-4daf-b535-8cab72a56a4e)
-
-### Objective
-
-_Connect four_ of your game pieces vertically, horizontally, or diagonally before the other player do so.
-
-### How to move?
-
-At each turn, player will drop a game piece in one of the seven columns by clicking on the chosen column.
-
-### More info
-
-Read [Wikipedia page on Connect Four](https://en.wikipedia.org/wiki/Connect_Four)
-
-## Browser compatibility
-
-Should be good in latest Firefox, Edge, Chrome, and Safari.
-
-## Contributing
-
-Contributions are welcome! I'm happy to accept any kind of contributions, pull requests, or bug reports.
-
-### Developing
-
-1. Fork and clone this repository
-2. Install dependencies
-
-```
+```bash
 yarn install
+yarn dev-browser
 ```
 
-3. Start local development server
+Open http://localhost:5173/
 
+## Mobile shell
+
+The native projects live in `ios/` and `android/` (Capacitor). Web assets are built from `browser/` into `browser/dist` and copied with `cap sync`.
+
+```bash
+yarn install
+yarn build:mobile
 ```
-yarn start
+
+Open `ios/App/App.xcworkspace` in Xcode, or `android/` in Android Studio. Release builds use target SDK 36 on Android.
+
+Themes, rival strength, sound, and on-device records are stored locally. Credits and license notices are in the menu and in `THIRD_PARTY_LICENSES.md`.
+
+## Checks
+
+```bash
+yarn lint:ci
+yarn workspaces foreach --all run test
 ```
 
-4. Make your changes at either `browser/`, `core/`, or `server/`
-5. Test it out at http://localhost:5173/
-6. After you are happy with your changes, please submit your Pull Request!
+Phone-sized menu and gameplay screenshots:
 
-## License
+```bash
+yarn screenshots
+```
 
-This work is licensed under MIT License.
+## Continuous integration
+
+- `Test` lints, tests, and builds.
+- `ios-testflight` archives the Capacitor Xcode project on macOS, signs with the App Store Connect API key, and uploads to TestFlight. It skips cleanly when the API key secrets are absent.
+- `android-release` builds a release AAB and APK. With keystore secrets it signs the release; otherwise it uploads a debug-signed APK.
